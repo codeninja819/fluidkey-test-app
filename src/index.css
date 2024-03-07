@@ -34,3 +34,7 @@ body {
     color: #181818;
   }
 }
+
+td {
+  text-align: center;
+}

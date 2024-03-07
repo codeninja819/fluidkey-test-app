@@ -6,7 +6,15 @@ import {
   predictStealthSafeAddressWithBytecode,
 } from '@fluidkey/stealth-account-kit';
 import { useEffect, useState } from 'react';
-import { HDKey, erc20Abi, formatEther, formatUnits, zeroAddress } from 'viem';
+import {
+  Address,
+  HDKey,
+  erc20Abi,
+  formatEther,
+  formatUnits,
+  isAddress,
+  zeroAddress,
+} from 'viem';
 import { useChainId, usePublicClient, useSignMessage } from 'wagmi';
 import { SafeVersion } from '@fluidkey/stealth-account-kit/lib/predictStealthSafeAddressTypes';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -27,8 +35,6 @@ export default function Main() {
   const { signMessageAsync } = useSignMessage();
   const publicClient = usePublicClient();
 
-  // @ts-ignore
-  const [spendingPrivateKey, setSpendingPrivateKey] = useState<string>('');
   const [spendingPublicKey, setSpendingPublicKey] = useState<string>('');
   const [viewingPrivateKey, setViewingPrivateKey] = useState<string>('');
   const [privateViewingKeyNode, setPrivateViewingKeyNode] = useState<
@@ -42,6 +48,7 @@ export default function Main() {
   const [useDefaultAddress, setUseDefaultAddress] = useState<boolean>(true);
   const [startNonce, setStartNonce] = useState<number>(0);
   const [endNonce, setEndNonce] = useState<number>(1);
+  const [customToken, setCustomToken] = useState<Address>(zeroAddress);
 
   const [, setUpdate] = useState<boolean>(true);
   const forceUpdate = () => setUpdate((u) => !u);
@@ -56,7 +63,6 @@ export default function Main() {
     });
     const { spendingPrivateKey, viewingPrivateKey } =
       generateKeysFromSignature(signature);
-    setSpendingPrivateKey(spendingPrivateKey);
     setViewingPrivateKey(viewingPrivateKey);
     const privateViewingKeyNode = extractViewingPrivateKeyNode(
       viewingPrivateKey,
@@ -103,114 +109,101 @@ export default function Main() {
     setResults(results);
   };
 
+  const fetchTokenBalance = async (
+    address: Address,
+    tokenAddress: Address | undefined
+  ) => {
+    if (
+      !tokenAddress ||
+      !isAddress(tokenAddress) ||
+      tokenAddress == zeroAddress ||
+      !publicClient
+    ) {
+      return 'N/A';
+    }
+    const tokenBalance = await publicClient.multicall({
+      contracts: [
+        {
+          address: tokenAddress,
+          functionName: 'decimals',
+          abi: erc20Abi,
+        },
+        {
+          address: tokenAddress,
+          functionName: 'balanceOf',
+          args: [address],
+          abi: erc20Abi,
+        },
+      ],
+    });
+    if (tokenBalance[0].error) {
+      console.log(tokenBalance[0].error);
+      return 'N/A';
+    }
+    return formatUnits(
+      tokenBalance[1].result || 0n,
+      tokenBalance[0].result || 6
+    );
+  };
+
+  const fetchBalance = async () => {
+    if (!publicClient) return;
+    console.log('fetchbalance');
+    results.forEach(async (result, index) => {
+      (async () => {
+        const balance = await publicClient.getBalance({
+          address: result.address || zeroAddress,
+        });
+        console.log('balance :>> ', balance);
+        console.log('balance :>> ', balance);
+        setResults((results) => {
+          results[index].balance = formatEther(balance);
+          return results;
+        });
+        forceUpdate();
+      })();
+      const { usdc, usdt, dai } = contracts[currentChainId];
+      (async () => {
+        const balance = await fetchTokenBalance(result.address, usdc);
+        setResults((results) => {
+          results[index].usdc = balance;
+          return results;
+        });
+        forceUpdate();
+      })();
+      (async () => {
+        const balance = await fetchTokenBalance(result.address, usdt);
+        setResults((results) => {
+          results[index].usdt = balance;
+          return results;
+        });
+        forceUpdate();
+      })();
+      (async () => {
+        const balance = await fetchTokenBalance(result.address, dai);
+        setResults((results) => {
+          results[index].dai = balance;
+          return results;
+        });
+        forceUpdate();
+      })();
+      (async () => {
+        const balance = await fetchTokenBalance(result.address, customToken);
+        setResults((results) => {
+          results[index].custom = balance;
+          return results;
+        });
+        forceUpdate();
+      })();
+    });
+  };
   useEffect(() => {
-    (async () => {
-      if (!publicClient) return;
-      results.forEach(async (result, index) => {
-        Promise.all([
-          async () => {
-            const balance = await publicClient.getBalance({
-              address: result.address || zeroAddress,
-            });
-            setResults((results) => {
-              results[index].balance = formatEther(balance);
-              return results;
-            });
-            forceUpdate();
-          },
-          async () => {
-            const { usdc, usdt, dai } = contracts[currentChainId];
-            Promise.all([
-              async () => {
-                if (usdc) {
-                  const tokenBalance = await publicClient.multicall({
-                    contracts: [
-                      {
-                        address: usdc,
-                        functionName: 'decimals',
-                        abi: erc20Abi,
-                      },
-                      {
-                        address: usdc,
-                        functionName: 'balanceOf',
-                        args: [result.address],
-                        abi: erc20Abi,
-                      },
-                    ],
-                  });
-                  const balance = formatUnits(
-                    tokenBalance[1].result || 0n,
-                    tokenBalance[0].result || 6
-                  );
-                  setResults((results) => {
-                    results[index].usdc = balance;
-                    return results;
-                  });
-                  forceUpdate();
-                }
-              },
-              async () => {
-                if (usdt) {
-                  const tokenBalance = await publicClient.multicall({
-                    contracts: [
-                      {
-                        address: usdt,
-                        functionName: 'decimals',
-                        abi: erc20Abi,
-                      },
-                      {
-                        address: usdt,
-                        functionName: 'balanceOf',
-                        args: [result.address],
-                        abi: erc20Abi,
-                      },
-                    ],
-                  });
-                  const balance = formatUnits(
-                    tokenBalance[1].result || 0n,
-                    tokenBalance[0].result || 6
-                  );
-                  setResults((results) => {
-                    results[index].usdt = balance;
-                    return results;
-                  });
-                  forceUpdate();
-                }
-              },
-              async () => {
-                if (dai) {
-                  const tokenBalance = await publicClient.multicall({
-                    contracts: [
-                      {
-                        address: dai,
-                        functionName: 'decimals',
-                        abi: erc20Abi,
-                      },
-                      {
-                        address: dai,
-                        functionName: 'balanceOf',
-                        args: [result.address],
-                        abi: erc20Abi,
-                      },
-                    ],
-                  });
-                  const balance = formatUnits(
-                    tokenBalance[1].result || 0n,
-                    tokenBalance[0].result || 6
-                  );
-                  setResults((results) => {
-                    results[index].dai = balance;
-                    return results;
-                  });
-                  forceUpdate();
-                }
-              },
-            ]);
-          },
-        ]);
-      });
-    })();
-  }, [currentChainId, results]);
+    fetchBalance();
+  }, [currentChainId, results, customToken]);
+
+  useEffect(() => {
+    // TODO: fetch balances when new block is mined
+  }, [chainId]);
 
   return (
     <>
@@ -294,18 +287,41 @@ export default function Main() {
                     onChange={(e) => setEndNonce(+e.target.value)}
                   />
                 </div>
+                <div className='flex justify-between'>
+                  <div>Custom Token Address:</div>
+                  <input
+                    type='text'
+                    value={customToken}
+                    onChange={(e) => setCustomToken(e.target.value as Address)}
+                  />
+                </div>
                 <button onClick={generateStealthAddress}>
                   Recover Addresses
                 </button>
+                <table>
+                  <tr>
+                    <th>Nonce</th>
+                    <th>Address</th>
+                    <th>Native Currency</th>
+                    <th>USDC</th>
+                    <th>USDT</th>
+                    <th>DAI</th>
+                    <th>Custom Token</th>
+                  </tr>
+                  {results.map((result, index) => (
+                    <tr key={index}>
+                      <td>{result.nonce}</td>
+                      <td>{result.address}</td>
+                      <td>{result.balance || 'Loading'}</td>
+                      <td>{result.usdc || 'Loading'}</td>
+                      <td>{result.usdt || 'Loading'}</td>
+                      <td>{result.dai || 'Loading'}</td>
+                      <td>{result.custom || 'Loading'}</td>
+                    </tr>
+                  ))}
+                </table>
               </>
             )}
-            {results.map((result, index) => (
-              <div key={index} className='flex justify-between'>
-                <div>{result.nonce}</div>
-                <div>{result.balance || 'Loading'}</div>
-                <div>{result.address}</div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
