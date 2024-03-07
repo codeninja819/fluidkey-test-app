@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  overflow-x: hidden; /* Hide horizontal scrollbar */
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+
 :root {
   background-color: #181818;
   color: rgba(255, 255, 255, 0.87);
