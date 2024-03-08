@@ -8,10 +8,9 @@ body {
 
 *::-webkit-scrollbar {
   display: none;
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }
-
 
 :root {
   background-color: #181818;
@@ -37,4 +36,9 @@ body {
 
 td {
   text-align: center;
+}
+
+button {
+  border: 2px solid white;
+  padding: 4px 8px;
 }

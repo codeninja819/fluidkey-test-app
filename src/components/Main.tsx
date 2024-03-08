@@ -19,6 +19,7 @@ import { useChainId, usePublicClient, useSignMessage } from 'wagmi';
 import { SafeVersion } from '@fluidkey/stealth-account-kit/lib/predictStealthSafeAddressTypes';
 import { privateKeyToAccount } from 'viem/accounts';
 import { contracts } from '../contracts';
+import CsvDownloader from 'react-csv-downloader';
 
 type StealthSafeAccoount = {
   nonce: number;
@@ -205,6 +206,37 @@ export default function Main() {
     // TODO: fetch balances when new block is mined
   }, [chainId]);
 
+  const columns = [
+    {
+      id: 'nonce',
+      displayName: 'Nonce',
+    },
+    {
+      id: 'address',
+      displayName: 'Address',
+    },
+    {
+      id: 'balance',
+      displayName: 'ETH',
+    },
+    {
+      id: 'usdc',
+      displayName: 'USDC',
+    },
+    {
+      id: 'usdt',
+      displayName: 'USDT',
+    },
+    {
+      id: 'dai',
+      displayName: 'DAI',
+    },
+    {
+      id: 'custom',
+      displayName: 'CUSTOM',
+    },
+  ];
+
   return (
     <>
       <div className='w-full flex justify-center'>
@@ -295,9 +327,19 @@ export default function Main() {
                     onChange={(e) => setCustomToken(e.target.value as Address)}
                   />
                 </div>
-                <button onClick={generateStealthAddress}>
-                  Recover Addresses
-                </button>
+                <div className='flex justify-around'>
+                  <button onClick={generateStealthAddress}>
+                    Recover Addresses
+                  </button>
+                  <CsvDownloader
+                    columns={columns}
+                    datas={results as any}
+                    filename='accounts.csv'
+                  >
+                    <button>Download as CSV</button>
+                  </CsvDownloader>
+                  ;
+                </div>
                 <table>
                   <tr>
                     <th>Nonce</th>
