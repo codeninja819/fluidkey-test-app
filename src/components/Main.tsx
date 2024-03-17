@@ -58,9 +58,9 @@ export default function Main() {
     const signature = await signMessageAsync({
       message: `Sign this message to generate your Fluidkey private payment keys.
 
-      WARNING: Only sign this message within a trusted website or platform to avoid loss of funds.
+WARNING: Only sign this message within a trusted website or platform to avoid loss of funds.
       
-      Secret: ${secret}`,
+Secret: ${secret}`,
     });
     const { spendingPrivateKey, viewingPrivateKey } =
       generateKeysFromSignature(signature);
